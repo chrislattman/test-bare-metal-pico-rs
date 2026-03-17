@@ -34,6 +34,7 @@ static G_ALARM: Mutex<RefCell<Option<Alarm0<CopyableTimer0>>>> = Mutex::new(RefC
 static G_LED: Mutex<RefCell<Option<LedPin>>> = Mutex::new(RefCell::new(None));
 
 // Interrupt service routine (ISR)
+// This is supposed to get called but there's something wrong with my code
 #[interrupt]
 fn TIMER0_IRQ_0() {
     critical_section::with(|cs| {
