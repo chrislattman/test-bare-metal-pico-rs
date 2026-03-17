@@ -1,10 +1,19 @@
 #![no_std]
 #![no_main]
 
+use core::cell::RefCell;
+
+use cortex_m::peripheral::NVIC;
+use critical_section::Mutex;
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
+use fugit::MicrosDurationU32;
 use panic_halt as _;
-use rp235x_hal as hal;
+use rp235x_hal::{
+    self as hal,
+    pac::interrupt,
+    timer::{Alarm, Alarm0, CopyableTimer0},
+};
 use usb_device::{class_prelude::*, prelude::*};
 use usbd_serial::SerialPort;
 
@@ -16,9 +25,37 @@ pub static IMAGE_DEF: hal::block::ImageDef = hal::block::ImageDef::secure_exe();
 /// External crystal frequency
 const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
+type LedPin = hal::gpio::Pin<
+    hal::gpio::bank0::Gpio25,
+    hal::gpio::FunctionSio<hal::gpio::SioOutput>,
+    hal::gpio::PullDown,
+>;
+static G_ALARM: Mutex<RefCell<Option<Alarm0<CopyableTimer0>>>> = Mutex::new(RefCell::new(None));
+static G_LED: Mutex<RefCell<Option<LedPin>>> = Mutex::new(RefCell::new(None));
+
+// Interrupt service routine (ISR)
+#[interrupt]
+fn TIMER0_IRQ_0() {
+    critical_section::with(|cs| {
+        // Borrow the alarm and LED from global state
+        let mut alarm_ref = G_ALARM.borrow(cs).borrow_mut();
+        let mut led_pin_ref = G_LED.borrow(cs).borrow_mut();
+
+        // Get mutable references
+        let alarm = alarm_ref.as_mut().unwrap();
+        let led_pin = led_pin_ref.as_mut().unwrap();
+
+        alarm.clear_interrupt();
+        led_pin.set_high();
+
+        // Schedule next interrupt in 6 seconds
+        let _ = alarm.schedule(MicrosDurationU32::micros(6_000_000));
+    });
+}
+
 #[hal::entry]
 fn main() -> ! {
-    // Get ownership of peripheral access crates
+    // Get ownership of peripheral access crate
     let mut pac = hal::pac::Peripherals::take().unwrap();
 
     // Set up watchdog and clocks
@@ -71,11 +108,25 @@ fn main() -> ! {
         .device_class(usbd_serial::USB_CLASS_CDC)
         .build();
 
+    led_pin.set_high();
+
+    // Configure alarm to trigger in 1.25 seconds
+    let mut alarm = timer.alarm_0().unwrap();
+    let _ = alarm.schedule(MicrosDurationU32::micros(1_250_000));
+    alarm.enable_interrupt();
+    critical_section::with(|cs| {
+        G_ALARM.borrow(cs).replace(Some(alarm));
+        G_LED.borrow(cs).replace(Some(led_pin));
+    });
+    unsafe {
+        NVIC::unmask(hal::pac::Interrupt::TIMER0_IRQ_0);
+    }
+
+    // Initialize timer counters
     let mut tick_10s = timer.get_counter();
-    let mut tick_hello = tick_10s.clone();
+    let mut tick_hello = tick_10s;
     timer.delay_ms(1_000);
     let mut tick_world = timer.get_counter();
-    led_pin.set_high();
 
     loop {
         usb_dev.poll(&mut [&mut serial]);
@@ -84,11 +135,21 @@ fn main() -> ! {
             tick_10s = timer.get_counter();
         } else if (timer.get_counter() - tick_hello).to_millis() >= 2_000 {
             let _ = serial.write(b"Hello\r\n");
-            led_pin.set_low();
+            // Critical sections are required because led_pin is guarded by a mutex
+            critical_section::with(|cs| {
+                let mut led_pin_ref = G_LED.borrow(cs).borrow_mut();
+                let led_pin = led_pin_ref.as_mut().unwrap();
+                led_pin.set_low();
+            });
             tick_hello = timer.get_counter();
         } else if (timer.get_counter() - tick_world).to_millis() >= 2_000 {
             let _ = serial.write(b"World!\r\n");
-            led_pin.set_high();
+            // Critical sections are required because led_pin is guarded by a mutex
+            critical_section::with(|cs| {
+                let mut led_pin_ref = G_LED.borrow(cs).borrow_mut();
+                let led_pin = led_pin_ref.as_mut().unwrap();
+                led_pin.set_high();
+            });
             tick_world = timer.get_counter();
         }
     }

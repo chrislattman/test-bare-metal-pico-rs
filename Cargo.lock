@@ -909,7 +909,10 @@ dependencies = [
 name = "test-bare-metal-pico-rs"
 version = "0.1.0"
 dependencies = [
+ "cortex-m",
+ "critical-section",
  "embedded-hal 1.0.0",
+ "fugit",
  "panic-halt",
  "rp235x-hal",
  "usb-device",
