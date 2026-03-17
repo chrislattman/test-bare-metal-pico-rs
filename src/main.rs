@@ -73,21 +73,22 @@ fn main() -> ! {
 
     let mut tick_10s = timer.get_counter();
     let mut tick_hello = tick_10s.clone();
-    timer.delay_ms(500);
+    timer.delay_ms(1_000);
     let mut tick_world = timer.get_counter();
+    led_pin.set_high();
 
     loop {
         usb_dev.poll(&mut [&mut serial]);
         if (timer.get_counter() - tick_10s).to_millis() >= 10_000 {
             let _ = serial.write(b"10 second timer went off\r\n");
             tick_10s = timer.get_counter();
-        } else if (timer.get_counter() - tick_hello).to_millis() >= 1_000 {
+        } else if (timer.get_counter() - tick_hello).to_millis() >= 2_000 {
             let _ = serial.write(b"Hello\r\n");
-            let _ = led_pin.set_low();
+            led_pin.set_low();
             tick_hello = timer.get_counter();
-        } else if (timer.get_counter() - tick_world).to_millis() >= 1_000 {
+        } else if (timer.get_counter() - tick_world).to_millis() >= 2_000 {
             let _ = serial.write(b"World!\r\n");
-            let _ = led_pin.set_high();
+            led_pin.set_high();
             tick_world = timer.get_counter();
         }
     }
