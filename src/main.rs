@@ -1,14 +1,12 @@
 #![no_std]
 #![no_main]
 
-use core::cell::RefCell;
+use core::{cell::RefCell, panic::PanicInfo};
 
 use cortex_m::peripheral::NVIC;
 use critical_section::Mutex;
-use embedded_hal::delay::DelayNs;
-use embedded_hal::digital::OutputPin;
+use embedded_hal::{delay::DelayNs, digital::OutputPin};
 use fugit::MicrosDurationU32;
-use panic_halt as _;
 use rp235x_hal::{
     self as hal,
     pac::interrupt,
@@ -154,4 +152,9 @@ fn main() -> ! {
             tick_world = timer.get_counter();
         }
     }
+}
+
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
 }
