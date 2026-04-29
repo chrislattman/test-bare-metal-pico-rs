@@ -2,7 +2,7 @@
 
 Instructions:
 
-- Follow the instructions at https://github.com/chrislattman/test-bare-metal-pico to install picotool if you haven't already
+- Follow the instructions at https://github.com/chrislattman/test-bare-metal-pico to install `picotool` if you haven't already
 - Run `rustup target add thumbv8m.main-none-eabihf`
 
 To build application and run on board:
