@@ -69,7 +69,6 @@ fn main() -> ! {
         &mut watchdog,
     )
     .unwrap();
-    watchdog.start(MicrosDurationU32::secs(4));
 
     // Single-cycle I/O block (fast GPIO)
     let sio = hal::Sio::new(pac.SIO);
@@ -121,6 +120,8 @@ fn main() -> ! {
     unsafe {
         NVIC::unmask(hal::pac::Interrupt::TIMER0_IRQ_0);
     }
+
+    watchdog.start(MicrosDurationU32::secs(4));
 
     // Initialize timer counters
     let mut tick_10s = timer.get_counter();
