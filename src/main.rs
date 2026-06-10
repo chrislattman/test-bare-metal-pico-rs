@@ -48,7 +48,7 @@ fn TIMER0_IRQ_0() {
         led_pin.set_high();
 
         // Schedule next interrupt in 6 seconds
-        let _ = alarm.schedule(MicrosDurationU32::micros(6_000_000));
+        let _ = alarm.schedule(MicrosDurationU32::secs(6));
     });
 }
 
@@ -69,6 +69,7 @@ fn main() -> ! {
         &mut watchdog,
     )
     .unwrap();
+    watchdog.start(MicrosDurationU32::secs(4));
 
     // Single-cycle I/O block (fast GPIO)
     let sio = hal::Sio::new(pac.SIO);
@@ -151,6 +152,7 @@ fn main() -> ! {
             });
             tick_world = timer.get_counter();
         }
+        watchdog.feed();
     }
 }
 
