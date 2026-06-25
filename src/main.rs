@@ -48,7 +48,7 @@ fn TIMER0_IRQ_0() {
         led_pin.set_high();
 
         // Schedule next interrupt in 6 seconds
-        let _ = alarm.schedule(MicrosDurationU32::secs(6));
+        alarm.schedule(MicrosDurationU32::secs(6)).unwrap();
     });
 }
 
@@ -111,7 +111,7 @@ fn main() -> ! {
 
     // Configure alarm to trigger in 1.25 seconds
     let mut alarm = timer.alarm_0().unwrap();
-    let _ = alarm.schedule(MicrosDurationU32::micros(1_250_000));
+    alarm.schedule(MicrosDurationU32::micros(1_250_000)).unwrap();
     alarm.enable_interrupt();
     critical_section::with(|cs| {
         G_ALARM.borrow(cs).replace(Some(alarm));
@@ -132,10 +132,10 @@ fn main() -> ! {
     loop {
         usb_dev.poll(&mut [&mut serial]);
         if (timer.get_counter() - tick_10s).to_millis() >= 10_000 {
-            let _ = serial.write(b"10 second timer went off\r\n");
+            serial.write(b"10 second timer went off\r\n").unwrap();
             tick_10s = timer.get_counter();
         } else if (timer.get_counter() - tick_hello).to_millis() >= 2_000 {
-            let _ = serial.write(b"Hello\r\n");
+            serial.write(b"Hello\r\n").unwrap();
             // Critical sections are required because led_pin is guarded by a mutex
             critical_section::with(|cs| {
                 let mut led_pin_ref = G_LED.borrow(cs).borrow_mut();
@@ -144,7 +144,7 @@ fn main() -> ! {
             });
             tick_hello = timer.get_counter();
         } else if (timer.get_counter() - tick_world).to_millis() >= 2_000 {
-            let _ = serial.write(b"World!\r\n");
+            serial.write(b"World!\r\n").unwrap();
             // Critical sections are required because led_pin is guarded by a mutex
             critical_section::with(|cs| {
                 let mut led_pin_ref = G_LED.borrow(cs).borrow_mut();
