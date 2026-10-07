@@ -9,6 +9,9 @@ cortex-m = "0.7.7"
 # cortex-m-rt = "0.7.5"
 embedded-hal = "1.0.0"
 fugit = "0.3.9"
+# Note that there isn't a board-ready Rust BSP crate for the Raspberry Pi Pico 2
+# (unlike the Raspberry Pi Pico, which can use the rp-pico crate, which uses the
+# rp2040-hal crate under the hood)
 rp235x-hal = { version = "0.4.0", features = ["rt", "critical-section-impl"] }
 usb-device = "0.3.2"
 usbd-serial = "0.2.2"
