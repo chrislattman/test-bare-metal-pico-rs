@@ -9,6 +9,6 @@ To build application and run on board:
 
 - Unplug USB cable from board
 - Hold down BOOTSEL button while plugging in USB cable
-- Run `cargo run --release` or just `cargo deploy`
+- Run `cargo run --release`
 
 Note: this example does NOT work for the Raspberry Pi Pico 2 W, as that on-board LED is accessed through the CYW43439 Wi-Fi/Bluetooth chip.
