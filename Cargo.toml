@@ -3,15 +3,23 @@ name = "test-bare-metal-pico-rs"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["rp2350"]
+# Build for the Raspberry Pi Pico 2
+rp2350 = ["dep:rp235x-hal", "dep:usb-device", "dep:usbd-serial"]
+# Build for QEMU's mps2-an521 machine instead (use with --no-default-features, see `cargo qemu`
+# in .cargo/config.toml), with src/qemu_hal.rs standing in for rp235x-hal
+qemu = ["dep:cortex-m-rt", "cortex-m/critical-section-single-core"]
+
 [dependencies]
 critical-section = "1.2.0"
 cortex-m = "0.7.7"
-# cortex-m-rt = "0.7.5"
+cortex-m-rt = { version = "0.7.5", features = ["device"], optional = true }
 embedded-hal = "1.0.0"
 fugit = "0.3.9"
 # Note that there isn't a board-ready Rust BSP crate for the Raspberry Pi Pico 2
 # (unlike the Raspberry Pi Pico, which can use the rp-pico crate, which uses the
 # rp2040-hal crate under the hood)
-rp235x-hal = { version = "0.4.0", features = ["rt", "critical-section-impl"] }
-usb-device = "0.3.2"
-usbd-serial = "0.2.2"
+rp235x-hal = { version = "0.4.0", features = ["rt", "critical-section-impl"], optional = true }
+usb-device = { version = "0.3.2", optional = true }
+usbd-serial = { version = "0.2.2", optional = true }

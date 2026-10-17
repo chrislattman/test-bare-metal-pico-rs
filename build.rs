@@ -1,12 +1,11 @@
-//! This build script copies the `memory.x` linker script from the crate
-//! root into a directory where the linker can always find it at build time.
-//! For many projects this is optional, as the linker always searches the
-//! project root directory -- wherever `Cargo.toml` is. However, if you
-//! are using a workspace or have a more complicated build setup, this
-//! build script becomes required. Additionally, by requesting that
-//! Cargo re-run the build script whenever `memory.x` is changed,
-//! updating `memory.x` ensures a rebuild of the application with the
-//! new memory settings.
+//! This build script copies the `memory.x` linker script for the selected
+//! board (`rp2350/memory.x`, or `qemu/memory.x` with the qemu feature) into a
+//! directory where the linker can always find it at build time. They can't
+//! live in the crate root, as the linker always searches the project root
+//! directory -- wherever `Cargo.toml` is -- first, so a `memory.x` there would
+//! always be used. Additionally, by requesting that Cargo re-run the build
+//! script whenever `memory.x` is changed, updating `memory.x` ensures a
+//! rebuild of the application with the new memory settings.
 
 use std::fs::File;
 use std::io::Write;
@@ -19,10 +18,23 @@ fn main() {
 
     // The file `memory.x` is loaded by cortex-m-rt's `link.x` script, which
     // is what we specify in `.cargo/config.toml` for Arm builds
-    let memory_x = include_bytes!("memory.x");
-    let mut f = File::create(out.join("memory.x")).unwrap();
-    f.write_all(memory_x).unwrap();
-    println!("cargo:rerun-if-changed=memory.x");
+    if std::env::var_os("CARGO_FEATURE_QEMU").is_some() {
+        // QEMU's mps2-an521 machine has a different memory map, and there's no
+        // PAC to provide `device.x` (the interrupt handler names)
+        let memory_x = include_bytes!("qemu/memory.x");
+        let mut f = File::create(out.join("memory.x")).unwrap();
+        f.write_all(memory_x).unwrap();
+        let device_x = include_bytes!("qemu/device.x");
+        let mut f = File::create(out.join("device.x")).unwrap();
+        f.write_all(device_x).unwrap();
+    } else {
+        let memory_x = include_bytes!("rp2350/memory.x");
+        let mut f = File::create(out.join("memory.x")).unwrap();
+        f.write_all(memory_x).unwrap();
+    }
+    println!("cargo:rerun-if-changed=rp2350/memory.x");
+    println!("cargo:rerun-if-changed=qemu/memory.x");
+    println!("cargo:rerun-if-changed=qemu/device.x");
 
     println!("cargo:rerun-if-changed=build.rs");
 }

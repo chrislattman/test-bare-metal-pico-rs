@@ -1,19 +1,42 @@
 #![no_std]
 #![no_main]
 
-use core::{cell::RefCell, panic::PanicInfo};
+#[cfg(all(feature = "qemu", feature = "rp2350"))]
+compile_error!("the qemu feature needs --no-default-features (use `cargo qemu`)");
 
+use core::panic::PanicInfo;
+
+use embedded_hal::digital::OutputPin;
+// In QEMU, src/qemu_hal.rs stands in for rp235x-hal under the same name
+#[cfg(feature = "qemu")]
+mod qemu_hal;
+#[cfg(feature = "qemu")]
+use qemu_hal as rp235x_hal;
+
+use rp235x_hal as hal;
+#[cfg(not(feature = "qemu"))]
+use usb_device::{class_prelude::*, prelude::*};
+#[cfg(not(feature = "qemu"))]
+use usbd_serial::SerialPort;
+
+// The timer (alarm interrupt, delays and timed messages) is only used in release builds.
+// Debug builds write to serial and blink the LED on every loop iteration instead, so every
+// line can be reached by stepping in GDB (the timer doesn't advance while the CPU is halted).
+#[cfg(not(debug_assertions))]
+use core::cell::RefCell;
+#[cfg(not(debug_assertions))]
 use cortex_m::peripheral::NVIC;
+#[cfg(not(debug_assertions))]
 use critical_section::Mutex;
-use embedded_hal::{delay::DelayNs, digital::OutputPin};
+#[cfg(not(debug_assertions))]
+use embedded_hal::delay::DelayNs;
+#[cfg(not(debug_assertions))]
 use fugit::MicrosDurationU32;
-use rp235x_hal::{
-    self as hal,
+#[cfg(not(debug_assertions))]
+use hal::{
     pac::interrupt,
     timer::{Alarm, Alarm0, CopyableTimer0},
 };
-use usb_device::{class_prelude::*, prelude::*};
-use usbd_serial::SerialPort;
 
 /// Tell the Boot ROM about our application (copies the boot metadata to .start_block)
 #[unsafe(link_section = ".start_block")]
@@ -23,16 +46,20 @@ pub static IMAGE_DEF: hal::block::ImageDef = hal::block::ImageDef::secure_exe();
 /// External crystal frequency
 const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
+#[cfg(not(debug_assertions))]
 type LedPin = hal::gpio::Pin<
     hal::gpio::bank0::Gpio25,
     hal::gpio::FunctionSio<hal::gpio::SioOutput>,
     hal::gpio::PullDown,
 >;
+#[cfg(not(debug_assertions))]
 static G_ALARM: Mutex<RefCell<Option<Alarm0<CopyableTimer0>>>> = Mutex::new(RefCell::new(None));
+#[cfg(not(debug_assertions))]
 static G_LED: Mutex<RefCell<Option<LedPin>>> = Mutex::new(RefCell::new(None));
 
 // Interrupt service routine (ISR)
 // This is supposed to get called but there's something wrong with my code
+#[cfg(not(debug_assertions))]
 #[interrupt]
 fn TIMER0_IRQ_0() {
     critical_section::with(|cs| {
@@ -83,9 +110,11 @@ fn main() -> ! {
     let mut led_pin = pins.gpio25.into_push_pull_output();
 
     // Initialize timer
+    #[cfg(not(debug_assertions))]
     let mut timer = hal::Timer::new_timer0(pac.TIMER0, &mut pac.RESETS, &clocks);
 
     // Initialize USB driver
+    #[cfg(not(feature = "qemu"))]
     let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
         pac.USB,
         pac.USB_DPRAM,
@@ -95,9 +124,11 @@ fn main() -> ! {
     ));
 
     // Configure the USB as Communications Device Class
+    #[cfg(not(feature = "qemu"))]
     let mut serial = SerialPort::new(&usb_bus);
 
     // Create a USB device with a fake VID/PID
+    #[cfg(not(feature = "qemu"))]
     let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x27dd))
         .strings(&[StringDescriptors::default()
             .manufacturer("Fake company") // Typically "Raspberry Pi"
@@ -107,30 +138,46 @@ fn main() -> ! {
         .device_class(usbd_serial::USB_CLASS_CDC)
         .build();
 
+    // QEMU has no USB host, so UART0 stands in for the USB serial port
+    #[cfg(feature = "qemu")]
+    let mut serial = hal::uart::Uart::new(pac.UART0, &clocks);
+
     led_pin.set_high();
 
     // Configure alarm to trigger in 1.25 seconds
-    let mut alarm = timer.alarm_0().unwrap();
-    alarm.schedule(MicrosDurationU32::micros(1_250_000)).unwrap();
-    alarm.enable_interrupt();
-    critical_section::with(|cs| {
-        G_ALARM.borrow(cs).replace(Some(alarm));
-        G_LED.borrow(cs).replace(Some(led_pin));
-    });
-    unsafe {
-        NVIC::unmask(hal::pac::Interrupt::TIMER0_IRQ_0);
+    #[cfg(not(debug_assertions))]
+    {
+        let mut alarm = timer.alarm_0().unwrap();
+        alarm.schedule(MicrosDurationU32::micros(1_250_000)).unwrap();
+        alarm.enable_interrupt();
+        critical_section::with(|cs| {
+            G_ALARM.borrow(cs).replace(Some(alarm));
+            G_LED.borrow(cs).replace(Some(led_pin));
+        });
+        unsafe {
+            NVIC::unmask(hal::pac::Interrupt::TIMER0_IRQ_0);
+        }
     }
 
+    // Not compiled in debug builds, so pausing in GDB doesn't trigger a reboot
+    #[cfg(not(debug_assertions))]
     watchdog.start(MicrosDurationU32::secs(4));
 
     // Initialize timer counters
+    #[cfg(not(debug_assertions))]
     let mut tick_10s = timer.get_counter();
+    #[cfg(not(debug_assertions))]
     let mut tick_hello = tick_10s;
+    #[cfg(not(debug_assertions))]
     timer.delay_ms(1_000);
+    #[cfg(not(debug_assertions))]
     let mut tick_world = timer.get_counter();
 
     loop {
+        #[cfg(not(feature = "qemu"))]
         usb_dev.poll(&mut [&mut serial]);
+
+        #[cfg(not(debug_assertions))]
         if (timer.get_counter() - tick_10s).to_millis() >= 10_000 {
             serial.write(b"10 second timer went off\r\n").unwrap();
             tick_10s = timer.get_counter();
@@ -153,6 +200,17 @@ fn main() -> ! {
             });
             tick_world = timer.get_counter();
         }
+
+        // Without delays the USB buffer can fill up, so ignore WouldBlock instead of unwrapping
+        #[cfg(debug_assertions)]
+        {
+            serial.write(b"Hello\r\n").unwrap();
+            led_pin.set_low();
+            serial.write(b"World!\r\n").unwrap();
+            led_pin.set_high();
+        }
+
+        #[cfg(not(debug_assertions))]
         watchdog.feed();
     }
 }
