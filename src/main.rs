@@ -201,7 +201,6 @@ fn main() -> ! {
             tick_world = timer.get_counter();
         }
 
-        // Without delays the USB buffer can fill up, so ignore WouldBlock instead of unwrapping
         #[cfg(debug_assertions)]
         {
             serial.write(b"Hello\r\n").unwrap();
