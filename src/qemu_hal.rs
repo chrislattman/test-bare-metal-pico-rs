@@ -114,10 +114,18 @@ pub mod pac {
     #[unsafe(link_section = ".vector_table.interrupts")]
     #[unsafe(no_mangle)]
     pub static __INTERRUPTS: [Vector; 4] = [
-        Vector { handler: DefaultHandler }, // 0: non-secure watchdog reset request
-        Vector { handler: DefaultHandler }, // 1: non-secure watchdog
-        Vector { handler: DefaultHandler }, // 2: S32K timer
-        Vector { handler: TIMER0_IRQ_0 },   // 3: TIMER0
+        Vector {
+            handler: DefaultHandler,
+        }, // 0: non-secure watchdog reset request
+        Vector {
+            handler: DefaultHandler,
+        }, // 1: non-secure watchdog
+        Vector {
+            handler: DefaultHandler,
+        }, // 2: S32K timer
+        Vector {
+            handler: TIMER0_IRQ_0,
+        }, // 3: TIMER0
     ];
 }
 
@@ -283,7 +291,8 @@ pub mod timer {
                 let ms = MS_TICKS.load(Ordering::Relaxed);
                 let cvr = read_reg(SYST_CVR);
                 if ms == MS_TICKS.load(Ordering::Relaxed) {
-                    let us = ms as u64 * 1_000 + ((SYST_RELOAD - cvr) / (SYSCLK_HZ / 1_000_000)) as u64;
+                    let us =
+                        ms as u64 * 1_000 + ((SYST_RELOAD - cvr) / (SYSCLK_HZ / 1_000_000)) as u64;
                     return Instant::from_ticks(us);
                 }
             }
@@ -341,7 +350,11 @@ pub mod timer {
 
     impl<D> Alarm0<D> {
         fn ctrl(&self) -> u32 {
-            if self.interrupt_enabled { TIMER_CTRL_INTEN } else { 0 }
+            if self.interrupt_enabled {
+                TIMER_CTRL_INTEN
+            } else {
+                0
+            }
         }
     }
 

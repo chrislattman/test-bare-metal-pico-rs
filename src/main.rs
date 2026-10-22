@@ -148,7 +148,9 @@ fn main() -> ! {
     #[cfg(not(debug_assertions))]
     {
         let mut alarm = timer.alarm_0().unwrap();
-        alarm.schedule(MicrosDurationU32::micros(1_250_000)).unwrap();
+        alarm
+            .schedule(MicrosDurationU32::micros(1_250_000))
+            .unwrap();
         alarm.enable_interrupt();
         critical_section::with(|cs| {
             G_ALARM.borrow(cs).replace(Some(alarm));
