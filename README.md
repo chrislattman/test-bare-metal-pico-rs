@@ -3,7 +3,6 @@
 Instructions:
 
 - Follow the instructions at https://github.com/chrislattman/test-bare-metal-pico to install `picotool` if you haven't already
-- Run `rustup target add thumbv8m.main-none-eabihf`
 
 To build application and run on board:
 
@@ -13,7 +12,6 @@ To build application and run on board:
 
 To run in QEMU:
 
-- Run `rustup target add thumbv8m.main-none-eabi`
 - Run `cargo qemu`, and in another shell `telnet localhost 5678`
 - `cargo qemu-debug` does the same with a debug build, but halts at startup and waits for GDB on localhost:1234. See .cargo/config.toml for details.
 

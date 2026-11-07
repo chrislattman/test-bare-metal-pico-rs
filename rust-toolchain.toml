@@ -1,0 +1,4 @@
+[toolchain]
+channel = "stable"
+# thumbv8m.main-none-eabihf for the Pico 2, thumbv8m.main-none-eabi for QEMU (no FPU)
+targets = ["thumbv8m.main-none-eabihf", "thumbv8m.main-none-eabi"]
