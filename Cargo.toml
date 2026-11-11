@@ -13,7 +13,6 @@ qemu = ["dep:cortex-m-rt", "cortex-m/critical-section-single-core"]
 
 [dependencies]
 critical-section = "1.2.0"
-cortex-m = "0.7.7"
 cortex-m-rt = { version = "0.7.5", features = ["device"], optional = true }
 embedded-hal = "1.0.0"
 fugit = "0.3.9"
@@ -23,3 +22,7 @@ fugit = "0.3.9"
 rp235x-hal = { version = "0.4.0", features = ["rt", "critical-section-impl"], optional = true }
 usb-device = { version = "0.3.2", optional = true }
 usbd-serial = { version = "0.2.2", optional = true }
+
+# cortex-m only exists on the Arm targets (rp235x-hal pulls in riscv/riscv-rt itself on RISC-V)
+[target.'cfg(target_arch = "arm")'.dependencies]
+cortex-m = "0.7.7"

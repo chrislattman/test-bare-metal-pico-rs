@@ -31,8 +31,13 @@ fn main() {
         let memory_x = include_bytes!("rp2350/memory.x");
         let mut f = File::create(out.join("memory.x")).unwrap();
         f.write_all(memory_x).unwrap();
+        // RISC-V builds use rp235x_riscv.x instead, which includes riscv-rt's `link.x`
+        let rp235x_riscv_x = include_bytes!("rp2350/rp235x_riscv.x");
+        let mut f = File::create(out.join("rp235x_riscv.x")).unwrap();
+        f.write_all(rp235x_riscv_x).unwrap();
     }
     println!("cargo:rerun-if-changed=rp2350/memory.x");
+    println!("cargo:rerun-if-changed=rp2350/rp235x_riscv.x");
     println!("cargo:rerun-if-changed=qemu/memory.x");
     println!("cargo:rerun-if-changed=qemu/device.x");
 

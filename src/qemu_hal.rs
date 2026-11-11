@@ -129,6 +129,19 @@ pub mod pac {
     ];
 }
 
+pub mod arch {
+    pub use cortex_m::interrupt::enable as interrupt_enable;
+
+    /// Enable an interrupt in the NVIC
+    ///
+    /// # Safety
+    ///
+    /// Same as `rp235x_hal::arch::interrupt_unmask`: don't call inside a critical section.
+    pub unsafe fn interrupt_unmask(irq: super::pac::Interrupt) {
+        unsafe { cortex_m::peripheral::NVIC::unmask(irq) }
+    }
+}
+
 pub mod block {
     /// Boot ROM metadata has no meaning in QEMU; it's only kept so `main.rs` builds unchanged
     pub struct ImageDef(#[allow(dead_code)] u32);

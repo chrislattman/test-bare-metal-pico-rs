@@ -1,4 +1,5 @@
 [toolchain]
 channel = "stable"
-# thumbv8m.main-none-eabihf for the Pico 2, thumbv8m.main-none-eabi for QEMU (no FPU)
-targets = ["thumbv8m.main-none-eabihf", "thumbv8m.main-none-eabi"]
+# thumbv8m.main-none-eabihf for the Pico 2, riscv32imac-unknown-none-elf for its RISC-V cores,
+# thumbv8m.main-none-eabi for QEMU (no FPU)
+targets = ["thumbv8m.main-none-eabihf", "riscv32imac-unknown-none-elf", "thumbv8m.main-none-eabi"]

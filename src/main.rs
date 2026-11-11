@@ -25,18 +25,15 @@ use usbd_serial::SerialPort;
 #[cfg(not(debug_assertions))]
 use core::cell::RefCell;
 #[cfg(not(debug_assertions))]
-use cortex_m::peripheral::NVIC;
-#[cfg(not(debug_assertions))]
 use critical_section::Mutex;
 #[cfg(not(debug_assertions))]
 use embedded_hal::delay::DelayNs;
 #[cfg(not(debug_assertions))]
 use fugit::MicrosDurationU32;
+#[cfg(all(not(debug_assertions), target_arch = "arm"))]
+use hal::pac::interrupt;
 #[cfg(not(debug_assertions))]
-use hal::{
-    pac::interrupt,
-    timer::{Alarm, Alarm0, CopyableTimer0},
-};
+use hal::timer::{Alarm, Alarm0, CopyableTimer0};
 
 /// Tell the Boot ROM about our application (copies the boot metadata to .start_block)
 #[unsafe(link_section = ".start_block")]
@@ -58,9 +55,10 @@ static G_ALARM: Mutex<RefCell<Option<Alarm0<CopyableTimer0>>>> = Mutex::new(RefC
 static G_LED: Mutex<RefCell<Option<LedPin>>> = Mutex::new(RefCell::new(None));
 
 // Interrupt service routine (ISR)
-// This is supposed to get called but there's something wrong with my code
+// On RISC-V, rp235x-hal's MachineExternal handler calls this by name
 #[cfg(not(debug_assertions))]
-#[interrupt]
+#[cfg_attr(target_arch = "arm", interrupt)]
+#[cfg_attr(target_arch = "riscv32", unsafe(no_mangle), allow(non_snake_case))]
 fn TIMER0_IRQ_0() {
     critical_section::with(|cs| {
         // Borrow the alarm and LED from global state
@@ -157,7 +155,9 @@ fn main() -> ! {
             G_LED.borrow(cs).replace(Some(led_pin));
         });
         unsafe {
-            NVIC::unmask(hal::pac::Interrupt::TIMER0_IRQ_0);
+            hal::arch::interrupt_unmask(hal::pac::Interrupt::TIMER0_IRQ_0);
+            // Interrupts are already enabled at reset on the Cortex-M33, but not on the Hazard3 (RISC-V)
+            hal::arch::interrupt_enable();
         }
     }
 

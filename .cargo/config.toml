@@ -9,6 +9,14 @@ rustflags = [
 ]
 runner = "picotool load -u -v -x -t elf"
 
+# The Pico 2's RISC-V (Hazard3) cores, which have no FPU
+[target.riscv32imac-unknown-none-elf]
+rustflags = [
+    "-C", "link-arg=-Trp235x_riscv.x", # RP2350 RISC-V layout, which includes riscv-rt's link.x
+    "-C", "link-arg=--nmagic",
+]
+runner = "picotool load -u -v -x -t elf"
+
 # QEMU's mps2-an521 CPU is a Cortex-M33 without an FPU, so it needs the soft-float target
 [target.thumbv8m.main-none-eabi]
 rustflags = [
@@ -21,6 +29,8 @@ rustflags = [
 runner = "qemu-system-arm -machine mps2-an521 -nographic -serial telnet:localhost:5678,server=on,wait=off -kernel"
 
 [alias]
+# cargo run-riscv: build in release mode and run on the Pico 2's RISC-V cores
+run-riscv = ["run", "--release", "--target", "riscv32imac-unknown-none-elf"]
 # cargo qemu: build in release mode and run in QEMU
 qemu = ["run", "--release", "--no-default-features", "--features", "qemu", "--target", "thumbv8m.main-none-eabi"]
 # cargo qemu-debug: same, but in debug mode, and halts at startup and waits for GDB on localhost:1234
